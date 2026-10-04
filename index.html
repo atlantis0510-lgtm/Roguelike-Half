@@ -1,0 +1,844 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#e8edef" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#10171b" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="冒険記録紙">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>冒険記録紙</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+:root{
+  --paper:#e8edef; --card:#f8faf9; --head:#d9e2e6; --ink:#1b2830; --edge:#1b2830;
+  --muted:#586972; --line:#a9b9c1; --grid:rgba(40,90,115,.11);
+  --amber:#e9a62c; --amber-ink:#1d1606; --red:#a3301d; --green:#2c6a47;
+  --floor:#1a252b; --floor-ink:#eef1ea; --focus:#1b6f93;
+  --serif:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP","Noto Serif CJK JP",serif;
+  --sans:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic UI","Noto Sans JP","Noto Sans CJK JP",system-ui,sans-serif;
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --paper:#10171b; --card:#172126; --head:#20303a; --ink:#e3ebee; --edge:#05090b;
+    --muted:#93a4ad; --line:#334650; --grid:rgba(140,195,220,.07);
+    --amber:#f0b24a; --amber-ink:#1d1606; --red:#ff8a73; --green:#7fd1a0;
+    --floor:#0b1114; --floor-ink:#eef1ea; --focus:#6cc4e6;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;font-family:var(--sans);color:var(--ink);background-color:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:24px 24px;line-height:1.5;font-size:15px;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+button{touch-action:manipulation;cursor:pointer}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.app{max-width:560px;margin:0 auto;padding:0 12px calc(84px + var(--safe-b))}
+
+/* ステータス帯 */
+.bar{position:sticky;top:0;z-index:20;margin:0 -12px 12px;padding:8px 12px 8px;padding-top:calc(8px + env(safe-area-inset-top,0px));background:var(--paper);border-bottom:1.5px solid var(--edge)}
+.chips{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.chip{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:46px;padding:2px 4px;background:var(--card);border:1.5px solid var(--edge);border-radius:4px;line-height:1.1}
+.chip span{font-size:11px;color:var(--muted);white-space:nowrap}
+.chip b{font-family:var(--serif);font-size:20px;font-variant-numeric:tabular-nums}
+.chip i{font-style:normal;font-size:12px;color:var(--muted)}
+.chip.low{border-color:var(--red)}
+.chip.low b{color:var(--red)}
+
+/* カード */
+.card{background:var(--card);border:1.5px solid var(--edge);border-radius:4px;margin-bottom:14px}
+.card>h2{margin:0;padding:8px 12px;font-family:var(--serif);font-size:16px;font-weight:700;background:var(--head);border-bottom:1.5px solid var(--edge)}
+.card .body{padding:12px}
+.hint{margin:0 0 8px;font-size:13px;color:var(--muted)}
+.row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.row>.grow{flex:1;min-width:0}
+.field{display:block;margin-bottom:10px}
+.field>span{display:block;font-size:13px;color:var(--muted);margin-bottom:2px}
+input[type=text],input[type=number],select,textarea{
+  width:100%;min-height:44px;padding:6px 10px;font-size:16px;background:var(--paper);border:1.5px solid var(--line);border-radius:4px}
+textarea{min-height:96px;resize:vertical}
+input.num{text-align:center;font-family:var(--serif);font-variant-numeric:tabular-nums;-moz-appearance:textfield;appearance:textfield;padding:6px 2px}
+input.num::-webkit-outer-spin-button,input.num::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+input:focus,select:focus,textarea:focus{border-color:var(--ink)}
+
+/* ボタン */
+.btn{min-height:44px;padding:8px 14px;background:var(--card);border:1.5px solid var(--edge);border-radius:4px;box-shadow:0 2px 0 var(--edge);font-weight:600}
+.btn:active,.step:active{transform:translateY(2px);box-shadow:0 0 0 var(--edge)}
+.btn.primary{background:var(--amber);color:var(--amber-ink)}
+.btn.danger{color:var(--red)}
+.btn.wide{width:100%}
+.btn[disabled]{opacity:.45}
+.step{width:44px;height:44px;flex:none;display:grid;place-items:center;padding:0;background:var(--card);border:1.5px solid var(--edge);border-radius:4px;box-shadow:0 2px 0 var(--edge);font-size:22px;line-height:1;font-weight:700}
+.step.sm{width:36px;height:36px;font-size:18px}
+.stepper{display:flex;align-items:center;gap:6px}
+.stepper input.num{flex:1;min-width:0}
+
+/* 能力値 */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px}
+.stat{border:1.5px solid var(--edge);border-radius:4px;background:var(--paper)}
+.stat-h{padding:3px 8px;font-size:13px;font-weight:700;background:var(--ink);color:var(--card)}
+.stat-v{display:flex;align-items:center;gap:4px;padding:8px 6px 4px}
+.stat-v .num{font-size:30px;font-weight:700;min-height:48px;border-color:transparent;background:transparent;flex:1;min-width:0;width:100%}
+.stat-v .step{width:40px;height:44px}
+.stat-m{display:flex;align-items:center;justify-content:center;gap:3px;padding:2px 4px 8px;font-size:12px;color:var(--muted)}
+.stat-m span{white-space:nowrap}
+.stat-m .step.sm{width:34px;height:36px}
+.stat-m .num{width:38px;flex:none;min-height:36px;font-size:17px;padding:2px;background:var(--card)}
+.tools{display:flex;gap:8px;padding:0 10px 10px;flex-wrap:wrap}
+.tools .btn{flex:1;min-width:140px}
+
+/* 装備 */
+.eq{display:grid;grid-template-columns:48px 1fr;gap:6px 8px;align-items:center;margin-bottom:10px}
+.eq label{font-weight:700;font-size:14px}
+.cnt{font-family:var(--serif);font-variant-numeric:tabular-nums}
+.cnt.over{color:var(--red);font-weight:700}
+.listhead{display:flex;justify-content:space-between;align-items:baseline;margin:4px 0 6px;font-weight:700}
+.x{width:44px;height:44px;flex:none;border:1.5px solid var(--line);border-radius:4px;background:transparent;font-size:20px;color:var(--muted)}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* スキル */
+.skills{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.skill{position:relative;display:flex;align-items:center;min-height:44px;padding:6px 10px;border:1.5px solid var(--line);border-radius:4px;background:var(--paper);font-weight:600}
+.skill input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0}
+.skill:has(input:checked){background:var(--ink);color:var(--card);border-color:var(--edge)}
+.skill:has(input:focus-visible){outline:3px solid var(--focus);outline-offset:2px}
+.skill::before{content:"";width:16px;height:16px;margin-right:8px;border:1.5px solid currentColor;border-radius:3px;flex:none}
+.skill:has(input:checked)::before{background:linear-gradient(currentColor,currentColor) center/8px 8px no-repeat}
+
+/* 修正表 */
+table.mods{width:100%;border-collapse:collapse;table-layout:fixed}
+.mods th,.mods td{border:1px solid var(--line);padding:0;text-align:center}
+.mods thead th{font-size:11px;font-weight:700;background:var(--head);padding:4px 0}
+.mods th.rl{width:54px;font-size:13px;background:var(--head)}
+.mods td input{width:100%;min-height:42px;border:0;border-radius:0;background:transparent;text-align:center;padding:0;font-size:16px;font-family:var(--serif)}
+.mods td input::placeholder{color:var(--line)}
+.mods th input{width:100%;min-height:42px;border:0;border-radius:0;background:transparent;text-align:center;padding:0;font-size:14px}
+.mods tfoot td,.mods tfoot th{font-weight:700;background:var(--head);min-height:40px;height:40px;font-family:var(--serif)}
+.mods td.neg{color:var(--red)}
+
+/* 従者 */
+.fol{border:1.5px solid var(--line);border-radius:4px;padding:8px;margin-bottom:8px;background:var(--paper)}
+.fol .r2{display:grid;grid-template-columns:72px 1fr 72px;gap:6px;margin-top:6px}
+.fol .r2 label{font-size:11px;color:var(--muted);display:block}
+.subhead{font-weight:700;margin:10px 0 6px}
+
+/* ダイス */
+.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px 12px 0}
+.quick .btn{font-family:var(--serif);font-size:20px;min-height:52px}
+.stage{margin:12px;min-height:200px;padding:16px 12px;text-align:center;color:var(--floor-ink);background-color:var(--floor);
+  background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:20px 20px;
+  border:1.5px solid var(--edge);border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+.stage .empty{color:#aab7bd;font-size:14px;max-width:18em}
+.dice{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.die{width:52px;height:52px;padding:7px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);background:#f1ead8;border-radius:10px;box-shadow:0 3px 0 #000}
+.die b{display:block;width:100%;height:100%;border-radius:50%}
+.die b.on{background:#1b2830}
+.stage.rolling .die{animation:tumble .22s linear infinite}
+@keyframes tumble{0%{transform:rotate(0)}50%{transform:rotate(12deg) translateY(-3px)}100%{transform:rotate(-8deg)}}
+.big{font-family:var(--serif);font-size:60px;line-height:1;font-weight:700;font-variant-numeric:tabular-nums}
+.stage .label{font-size:14px;color:#c9d3d8}
+.stage .sub{font-size:13px;color:#aab7bd}
+.verdict{display:inline-block;padding:4px 14px;border:1.5px solid currentColor;border-radius:4px;font-weight:700;font-size:16px}
+.stage.ok .verdict,.stage.ok .big{color:#7fd1a0}
+.stage.ng .verdict,.stage.ng .big{color:#ff8a73}
+.stage.crit .big{color:#f0b24a;text-shadow:0 0 18px rgba(240,178,74,.6)}
+.stage.crit .verdict{background:#f0b24a;color:#1d1606;border-color:#f0b24a}
+.stage.fum .big{color:#ff8a73}
+.stage.fum .verdict{background:#ff8a73;color:#1d1606;border-color:#ff8a73}
+.stage .btn{background:transparent;color:var(--floor-ink);border-color:#c9d3d8;box-shadow:0 2px 0 #000;font-size:14px}
+.seg{display:grid;gap:6px;margin-bottom:10px}
+.seg.k{grid-template-columns:repeat(4,1fr)}
+.seg.b{grid-template-columns:1fr 1fr}
+.seg button{min-height:44px;padding:4px 6px;background:var(--paper);border:1.5px solid var(--line);border-radius:4px;font-weight:600}
+.seg button.on{background:var(--ink);color:var(--card);border-color:var(--edge)}
+.seg button[disabled]{opacity:.4}
+.seg small{font-weight:400;opacity:.8;font-family:var(--serif)}
+.formula{margin:4px 0 12px;padding:8px 10px;background:var(--paper);border:1.5px dashed var(--line);border-radius:4px;font-family:var(--serif);font-size:15px}
+.roll{min-height:54px;font-size:18px}
+.cap{font-size:12px;color:var(--muted);margin:0 0 4px}
+.log{list-style:none;margin:0;padding:0;max-height:320px;overflow:auto}
+.log li{display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px}
+.log time{color:var(--muted);font-variant-numeric:tabular-nums;flex:none}
+.log li.ok span{color:var(--green)}
+.log li.ng span{color:var(--red)}
+.empty-note{color:var(--muted);font-size:14px;margin:0}
+
+/* d66表 */
+.g66{display:grid;grid-template-columns:34px repeat(6,1fr);gap:4px}
+.g66 .h{display:grid;place-items:center;font-weight:700;font-size:13px;background:var(--head);border-radius:3px;min-height:30px}
+.g66 button{min-height:46px;padding:0;background:var(--paper);border:1.5px solid var(--line);border-radius:4px;font-family:var(--serif);font-size:16px;font-variant-numeric:tabular-nums;position:relative}
+.g66 button[aria-pressed=true]{background:var(--ink);color:var(--card);border-color:var(--edge)}
+.g66 button[aria-pressed=true]::after{content:"";position:absolute;left:6px;right:6px;top:50%;border-top:2px solid var(--amber)}
+.g66 button.hl{outline:3px solid var(--amber);outline-offset:1px}
+.sw{display:flex;align-items:center;gap:10px;min-height:44px;margin-top:10px}
+.sw input{width:22px;height:22px;accent-color:var(--ink)}
+
+/* データ */
+.chars{list-style:none;margin:0 0 10px;padding:0}
+.chars li{display:flex;gap:6px;align-items:stretch;margin-bottom:8px}
+.chars .pick{flex:1;min-width:0;text-align:left;padding:6px 10px;background:var(--paper);border:1.5px solid var(--line);border-radius:4px}
+.chars li.on .pick{border-color:var(--edge);background:var(--head)}
+.chars .pick b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chars .pick small{color:var(--muted)}
+.chars .btn{padding:4px 10px;font-size:14px}
+.kv{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.note{font-size:13px;color:var(--muted);margin:10px 0 0}
+.note+.note{margin-top:6px}
+
+/* ナビ・トースト */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(4,1fr);background:var(--card);border-top:1.5px solid var(--edge);padding-bottom:var(--safe-b)}
+nav.tabs button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:58px;border:0;background:transparent;color:var(--muted);font-size:12px;font-weight:600}
+nav.tabs button svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+nav.tabs button[aria-current=page]{color:var(--ink)}
+nav.tabs button[aria-current=page]::before{content:"";position:absolute;top:-1.5px;left:18%;right:18%;height:4px;background:var(--amber)}
+.toast{position:fixed;left:50%;bottom:calc(76px + var(--safe-b));transform:translateX(-50%);z-index:40;max-width:90%;padding:10px 16px;background:var(--ink);color:var(--card);border-radius:4px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .15s}
+.toast.show{opacity:1}
+.warn{margin:0 0 12px;padding:10px 12px;background:var(--red);color:#fff;border-radius:4px;font-size:14px}
+.warn[hidden]{display:none}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="bar"><div class="chips" id="chips"></div></div>
+  <p class="warn" id="warn" hidden>この端末では保存ができません。プライベートブラウズを閉じるか、ブラウザの設定でサイトデータの保存を許可してください。</p>
+  <main id="main"></main>
+</div>
+<nav class="tabs" id="tabs" aria-label="画面切り替え"></nav>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="file" accept=".json,application/json" hidden>
+
+<script>
+(()=>{
+'use strict';
+
+/* ---------- 定数 ---------- */
+const KEY='rh-sheet-v1';
+const TABKEY='rh-sheet-tab';
+const SUBS=['魔術点','幸運点','筋力点','器用点'];
+const SKILLS=[['magic','魔術'],['miracle','奇跡'],['powerAtk','全力攻撃'],['powerDef','全力防御'],['cover','かばう'],['powerShot','全力射撃'],['treasure','宝物の獲得'],['sense','察知']];
+const STATS=[['skill','技量点'],['life','生命点'],['sub','副能力値'],['follower','従者点']];
+const MIN={skill:-9,life:0,sub:-9,follower:0};
+const MODCOLS=['攻撃','防御','魔術','幸運','筋力','器用','生命'];
+const FIXROWS=['武器','盾','鎧'];
+const KINDS=[
+  {id:'atk',name:'攻撃',mod:0},{id:'def',name:'防御',mod:1},{id:'mag',name:'魔術',mod:2},{id:'luk',name:'幸運',mod:3},
+  {id:'str',name:'筋力',mod:4},{id:'dex',name:'器用',mod:5},{id:'life',name:'生命',mod:null},{id:'free',name:'その他',mod:null}];
+const BOUNDS={'roll.target':[1,20],'roll.adj':[-9,9],'gold':[0,9999],'food':[0,99],'level':[0,99]};
+const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const TABS=[
+  ['sheet','シート','<svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 12h7M9 16h7"/></svg>'],
+  ['dice','ダイス','<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="15" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/><circle cx="9" cy="15" r="1" fill="currentColor"/></svg>'],
+  ['d66','d66表','<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16"/><path d="M4 9.3h16M4 14.7h16M9.3 4v16M14.7 4v16"/></svg>'],
+  ['data','保存','<svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></svg>']
+];
+
+/* ---------- ユーティリティ ---------- */
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const fmt=n=>n>=0?'+'+n:'−'+Math.abs(n);
+const getPath=(o,p)=>p.split('.').reduce((a,k)=>a==null?a:a[k],o);
+const setPath=(o,p,v)=>{const k=p.split('.');let a=o;for(let i=0;i<k.length-1;i++)a=a[k[i]];a[k[k.length-1]]=v;};
+const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+const pad2=n=>String(n).padStart(2,'0');
+function d6(){
+  try{const a=new Uint8Array(1);do{crypto.getRandomValues(a)}while(a[0]>=252);return a[0]%6+1}
+  catch(e){return 1+Math.floor(Math.random()*6)}
+}
+
+/* ---------- データ ---------- */
+function newChar(name){
+  return{
+    id:uid(),name:name||'',level:10,subType:'',
+    stats:{skill:{cur:0,max:0},life:{cur:4,max:4},sub:{cur:2,max:2},follower:{cur:0,max:7}},
+    hand1:'',hand2:'',armor:'',items:[],gold:10,food:2,
+    skills:{},spells:[],
+    mods:[0,1,2,3,4,5].map(()=>({label:'',v:[0,0,0,0,0,0,0]})),
+    followers:{fight:[],nofight:[]},
+    d66:Array(36).fill(false),auto66:false,notes:'',log:[],
+    roll:{kind:'atk',base:'skill',target:4,adj:0}
+  };
+}
+function fillDefaults(t,d){
+  for(const k of Object.keys(d)){
+    if(t[k]===undefined||t[k]===null||typeof t[k]!==typeof d[k]) t[k]=JSON.parse(JSON.stringify(d[k]));
+    else if(d[k]&&typeof d[k]==='object'&&!Array.isArray(d[k])) fillDefaults(t[k],d[k]);
+  }
+  return t;
+}
+function normalizeChar(c){
+  fillDefaults(c,newChar());
+  while(c.mods.length<6)c.mods.push({label:'',v:[0,0,0,0,0,0,0]});
+  c.mods.forEach(r=>{if(!Array.isArray(r.v))r.v=[];while(r.v.length<7)r.v.push(0);r.v=r.v.slice(0,7).map(n=>Number(n)||0);if(typeof r.label!=='string')r.label=''});
+  if(c.d66.length!==36)c.d66=Array(36).fill(false);
+  c.followers.fight=Array.isArray(c.followers.fight)?c.followers.fight:[];
+  c.followers.nofight=Array.isArray(c.followers.nofight)?c.followers.nofight:[];
+  c.log=c.log.slice(0,60);
+  return c;
+}
+let state=null,storageOK=true,lastSaved=null,saveTimer=null;
+function load(){
+  try{
+    const raw=localStorage.getItem(KEY);
+    if(raw){
+      const s=JSON.parse(raw);
+      if(s&&Array.isArray(s.chars)&&s.chars.length){s.chars.forEach(normalizeChar);if(!s.chars.some(c=>c.id===s.active))s.active=s.chars[0].id;state=s}
+    }
+  }catch(e){storageOK=false}
+  if(!state){const c=newChar();state={v:1,active:c.id,chars:[c]}}
+}
+function flush(){
+  clearTimeout(saveTimer);saveTimer=null;
+  try{localStorage.setItem(KEY,JSON.stringify(state));lastSaved=new Date();storageOK=true}
+  catch(e){storageOK=false}
+  const w=$('#warn');if(w)w.hidden=storageOK;
+  const s=$('#savedAt');if(s)s.textContent=lastSaved?`${pad2(lastSaved.getHours())}:${pad2(lastSaved.getMinutes())}:${pad2(lastSaved.getSeconds())}`:'まだありません';
+}
+function save(){clearTimeout(saveTimer);saveTimer=setTimeout(flush,200)}
+const cur=()=>state.chars.find(c=>c.id===state.active)||state.chars[0];
+const subName=c=>c.subType||'副能力値';
+const modTotal=(c,j)=>c.mods.reduce((s,r)=>s+(Number(r.v[j])||0),0);
+const isStat=p=>/^stats\./.test(p);
+
+/* ---------- 値の更新 ---------- */
+function commit(path,v){
+  const c=cur();
+  const m=path.match(/^stats\.(\w+)\.(cur|max)$/);
+  if(m){
+    const s=m[1],f=m[2],st=c.stats[s];
+    v=Math.round(Number(v)||0);
+    if(f==='max'){
+      v=clamp(v,0,99);
+      const wasFull=st.cur===st.max;
+      st.max=v;
+      if(wasFull&&s!=='follower')st.cur=v;
+      if(st.cur>v)st.cur=v;
+    }else st.cur=clamp(v,MIN[s],st.max);
+  }else{
+    if(BOUNDS[path]&&typeof v==='number')v=clamp(Math.round(v),BOUNDS[path][0],BOUNDS[path][1]);
+    setPath(c,path,v);
+  }
+  save();syncUI();
+}
+function handleBind(el,final){
+  const path=el.dataset.bind;let v;
+  if(el.type==='checkbox')v=el.checked;
+  else if(el.dataset.t==='num'){
+    const raw=el.value;
+    if(raw===''||isNaN(Number(raw))){
+      if(!final)return;
+      if(isStat(path)){showValue(el);return}
+      v=0;
+    }else v=Number(raw);
+  }else v=el.value;
+  commit(path,v);
+  if(final)showValue(el);
+}
+function showValue(el){
+  if(el.type==='checkbox')return;
+  const v=getPath(cur(),el.dataset.bind);
+  el.value=(el.dataset.zero==='blank'&&v===0)?'':(v==null?'':v);
+}
+function syncUI(){
+  const c=cur();if(!c)return;
+  $$('[data-bind]').forEach(el=>{
+    if(el===document.activeElement&&el.type!=='checkbox')return;
+    const v=getPath(c,el.dataset.bind);
+    if(el.type==='checkbox')el.checked=!!v;
+    else el.value=(el.dataset.zero==='blank'&&v===0)?'':(v==null?'':v);
+  });
+  derived();
+}
+
+/* ---------- 画面の部品 ---------- */
+const PIPS={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+const dieHTML=n=>`<span class="die" role="img" aria-label="出目${n}">${[0,1,2,3,4,5,6,7,8].map(i=>`<b${PIPS[n].includes(i)?' class="on"':''}></b>`).join('')}</span>`;
+
+function stepper(path,label,extra=''){
+  return `<div class="stepper"><button class="step" data-act="step" data-path="${path}" data-d="-1" aria-label="${label}を1減らす">−</button><input class="num" type="number" data-bind="${path}" data-t="num" aria-label="${label}" ${extra}><button class="step" data-act="step" data-path="${path}" data-d="1" aria-label="${label}を1増やす">＋</button></div>`;
+}
+function statBox(key,label,sublabel){
+  const nm=sublabel?'副能力値':label;
+  return `<div class="stat"><div class="stat-h">${sublabel?'<span data-sublabel></span>':label}</div>
+    <div class="stat-v">
+      <button class="step" data-act="step" data-path="stats.${key}.cur" data-d="-1" aria-label="${nm}の現在値を1減らす">−</button>
+      <input class="num" type="number" data-bind="stats.${key}.cur" data-t="num" aria-label="${nm}の現在値">
+      <button class="step" data-act="step" data-path="stats.${key}.cur" data-d="1" aria-label="${nm}の現在値を1増やす">＋</button>
+    </div>
+    <div class="stat-m"><span>最大</span>
+      <button class="step sm" data-act="step" data-path="stats.${key}.max" data-d="-1" aria-label="${nm}の最大値を1減らす">−</button>
+      <input class="num" type="number" data-bind="stats.${key}.max" data-t="num" aria-label="${nm}の最大値">
+      <button class="step sm" data-act="step" data-path="stats.${key}.max" data-d="1" aria-label="${nm}の最大値を1増やす">＋</button>
+    </div></div>`;
+}
+function listBlock(list,c){
+  return getPath(c,list).map((_,i)=>`<div class="row"><input class="grow" type="text" data-bind="${list}.${i}" data-t="text" aria-label="${list==='items'?'装備品':'魔法'}${i+1}" autocomplete="off"><button class="x" data-act="del" data-list="${list}" data-i="${i}" aria-label="削除">×</button></div>`).join('');
+}
+function folBlock(list,c){
+  const arr=getPath(c,list);
+  if(!arr.length)return '<p class="empty-note">まだいません。</p>';
+  return arr.map((_,i)=>`<div class="fol"><div class="row" style="margin:0"><input class="grow" type="text" data-bind="${list}.${i}.name" data-t="text" placeholder="従者名" aria-label="従者名" autocomplete="off"><button class="x" data-act="del" data-list="${list}" data-i="${i}" aria-label="削除">×</button></div>
+    <div class="r2"><div><label>技量点</label><input class="num" type="number" data-bind="${list}.${i}.skill" data-t="num" aria-label="従者の技量点"></div>
+    <div><label>その他能力</label><input type="text" data-bind="${list}.${i}.other" data-t="text" aria-label="その他能力" autocomplete="off"></div>
+    <div><label>従者数</label><input class="num" type="number" data-bind="${list}.${i}.count" data-t="num" aria-label="従者数"></div></div></div>`).join('');
+}
+
+/* ---------- 各タブ ---------- */
+function viewSheet(){
+  const c=cur();
+  const charOpts=state.chars.map(x=>`<option value="${x.id}">${esc(x.name||'（名前なし）')}</option>`).join('');
+  return `
+  <section class="card"><h2>キャラクター</h2><div class="body">
+    <label class="field"><span>キャラクターを切り替える</span><select id="charSel" aria-label="キャラクター">${charOpts}</select></label>
+    <label class="field"><span>名前</span><input type="text" data-bind="name" data-t="text" autocomplete="off" placeholder="名前を入力"></label>
+    <div class="pair">
+      <label class="field" style="margin:0"><span>経験レベル</span><input class="num" type="number" data-bind="level" data-t="num"></label>
+      <label class="field" style="margin:0"><span>副能力値の種類</span><select data-bind="subType" data-t="sel"><option value="">未選択</option>${SUBS.map(s=>`<option value="${s}">${s}</option>`).join('')}</select></label>
+    </div>
+  </div></section>
+
+  <section class="card"><h2>能力値</h2>
+    <div class="stats">${statBox('skill','技量点')}${statBox('life','生命点')}${statBox('sub','副能力値',true)}${statBox('follower','従者点')}</div>
+    <div class="tools"><button class="btn" data-act="healall">技量・生命・副能力値を最大値まで回復</button></div>
+  </section>
+
+  <section class="card"><h2>装備</h2><div class="body">
+    <div class="eq"><label for="h1">手1</label><input id="h1" type="text" data-bind="hand1" data-t="text" autocomplete="off">
+    <label for="h2">手2</label><input id="h2" type="text" data-bind="hand2" data-t="text" autocomplete="off">
+    <label for="ar">鎧</label><input id="ar" type="text" data-bind="armor" data-t="text" autocomplete="off"></div>
+    <div class="listhead"><span>装備品</span><span class="cnt" id="itemcount"></span></div>
+    <p class="hint">持てる数の上限は生命点の最大値です（手と鎧は数えません）。</p>
+    ${listBlock('items',c)}
+    <button class="btn wide" data-act="add" data-list="items">装備品を追加</button>
+    <div class="pair" style="margin-top:14px">
+      <div><span class="cap">金貨</span>${stepper('gold','金貨')}</div>
+      <div><span class="cap">食料</span>${stepper('food','食料')}</div>
+    </div>
+    <button class="btn wide" style="margin-top:10px" data-act="eat">食料を1つ食べる（生命点+2）</button>
+  </div></section>
+
+  <section class="card"><h2>スキル</h2><div class="body"><div class="skills">
+    ${SKILLS.map(([k,n])=>`<label class="skill"><input type="checkbox" data-bind="skills.${k}" data-t="chk"><span>${n}</span></label>`).join('')}
+  </div></div></section>
+
+  <section class="card"><h2>魔法</h2><div class="body">
+    ${listBlock('spells',c)}
+    <button class="btn wide" data-act="add" data-list="spells">魔法を追加</button>
+  </div></section>
+
+  <section class="card"><h2>判定ロール等への修正</h2><div class="body">
+    <p class="hint">装備などが与える修正を書きます。右端の「生命」は生命点の最大値への修正です。</p>
+    <table class="mods"><thead><tr><th class="rl"></th>${MODCOLS.map(n=>`<th scope="col">${n}</th>`).join('')}</tr></thead>
+    <tbody>${c.mods.map((r,i)=>`<tr><th scope="row" class="rl">${i<3?FIXROWS[i]:`<input type="text" data-bind="mods.${i}.label" data-t="text" placeholder="名前" aria-label="行の名前" autocomplete="off">`}</th>${MODCOLS.map((n,j)=>`<td><input type="number" data-bind="mods.${i}.v.${j}" data-t="num" data-zero="blank" placeholder="0" aria-label="${i<3?FIXROWS[i]:'行'+(i+1)}の${n}"></td>`).join('')}</tr>`).join('')}</tbody>
+    <tfoot><tr><th scope="row" class="rl" style="font-size:12px">合計</th>${MODCOLS.map((n,j)=>`<td id="msum-${j}">0</td>`).join('')}</tr></tfoot></table>
+  </div></section>
+
+  <section class="card"><h2>従者</h2><div class="body">
+    <div class="listhead"><span>従者数の合計</span><span class="cnt" id="ftotal"></span></div>
+    <div class="subhead">戦う従者</div>${folBlock('followers.fight',c)}
+    <button class="btn wide" data-act="add" data-list="followers.fight">戦う従者を追加</button>
+    <div class="subhead" style="margin-top:16px">戦わない従者</div>${folBlock('followers.nofight',c)}
+    <button class="btn wide" data-act="add" data-list="followers.nofight">戦わない従者を追加</button>
+    <button class="btn wide" style="margin-top:14px" data-act="syncfol">従者点の現在値を従者数の合計に合わせる</button>
+  </div></section>
+
+  <section class="card"><h2>メモ</h2><div class="body"><textarea data-bind="notes" data-t="text" aria-label="メモ" placeholder="冒険の記録、気になることなど"></textarea></div></section>`;
+}
+
+function viewDice(){
+  return `
+  <section class="card"><h2>ダイス</h2>
+    <div class="quick">
+      <button class="btn" data-act="q" data-q="1d6">1d6</button>
+      <button class="btn" data-act="q" data-q="2d6">2d6</button>
+      <button class="btn" data-act="q" data-q="1d3">1d3</button>
+      <button class="btn" data-act="q" data-q="d66">d66</button>
+    </div>
+    <div class="stage" id="stage" data-stage aria-live="polite"></div>
+  </section>
+
+  <section class="card"><h2>判定ロール</h2><div class="body">
+    <span class="cap">判定の種類（修正は修正表から自動で足します）</span>
+    <div class="seg k">${KINDS.map(k=>`<button data-pick-path="roll.kind" data-pick-val="${k.id}">${k.name}</button>`).join('')}</div>
+    <span class="cap">使う能力（現在値で判定します）</span>
+    <div class="seg b">
+      <button data-pick-path="roll.base" data-pick-val="skill">技量点 <small id="bs-skill"></small></button>
+      <button id="subopt" data-pick-path="roll.base" data-pick-val="sub"><span data-sublabel></span> <small id="bs-sub"></small></button>
+    </div>
+    <div class="pair">
+      <div><span class="cap">目標値</span>${stepper('roll.target','目標値')}</div>
+      <div><span class="cap">追加の修正</span>${stepper('roll.adj','追加の修正')}</div>
+    </div>
+    <p class="formula" id="cpreview"></p>
+    <button class="btn primary wide roll" data-act="rollcheck">判定ロールを振る</button>
+  </div></section>
+
+  <section class="card"><h2>ダイスの記録</h2><div class="body">
+    <ul class="log" id="log"></ul>
+    <button class="btn wide" style="margin-top:10px" data-act="clearlog" id="clearlog">記録を消す</button>
+  </div></section>`;
+}
+
+function view66(){
+  const c=cur();
+  let cells='';
+  for(let o=1;o<=6;o++){
+    cells+=`<div class="h">${o}</div>`;
+    for(let t=1;t<=6;t++){
+      const idx=(t-1)*6+(o-1);
+      const hl=lastRoll&&lastRoll.type==='d66'&&lastRoll.idx===idx;
+      cells+=`<button data-act="cell66" data-idx="${idx}" aria-pressed="${c.d66[idx]}" aria-label="出目${t}${o}"${hl?' class="hl"':''}>${t}${o}</button>`;
+    }
+  }
+  return `
+  <section class="card"><h2>d66を振る</h2>
+    <div class="quick" style="grid-template-columns:1fr"><button class="btn primary roll" data-act="q" data-q="d66">d66を振る</button></div>
+    <div class="stage" data-stage style="min-height:150px"></div>
+    <div class="body" style="padding-top:0"><label class="sw"><input type="checkbox" data-bind="auto66" data-t="chk"><span>振った出目を自動でチェックする</span></label></div>
+  </section>
+  <section class="card"><h2>d66表の出目チェック</h2><div class="body">
+    <p class="hint">出た目をタップするとチェックが付きます。もう一度押すと外れます。</p>
+    <div class="g66"><div class="h"></div>${[10,20,30,40,50,60].map(n=>`<div class="h">${n}</div>`).join('')}${cells}</div>
+    <button class="btn wide danger" style="margin-top:12px" data-act="reset66">チェックをすべて外す</button>
+  </div></section>`;
+}
+
+function viewData(){
+  const items=state.chars.map(c=>`<li class="${c.id===state.active?'on':''}"><button class="pick" data-act="selchar" data-id="${c.id}"><b>${esc(c.name||'（名前なし）')}</b><small>技量${c.stats.skill.cur} 生命${c.stats.life.cur}/${c.stats.life.max} レベル${c.level}</small></button><button class="btn" data-act="dupchar" data-id="${c.id}">複製</button><button class="btn danger" data-act="delchar" data-id="${c.id}">削除</button></li>`).join('');
+  return `
+  <section class="card"><h2>保存の状態</h2><div class="body">
+    <p style="margin:0">入力した内容は、変更のたびにこの端末の中へ自動で保存されます。</p>
+    <p class="note">最後に保存した時刻：<span id="savedAt">${lastSaved?`${pad2(lastSaved.getHours())}:${pad2(lastSaved.getMinutes())}:${pad2(lastSaved.getSeconds())}`:'まだありません'}</span></p>
+    <p class="note">ブラウザで開いた場合とホーム画面から開いた場合では、保存先が別になります。どちらか一方で使い続けてください。</p>
+    <p class="note">端末の空き容量が少ないときや、ブラウザのデータを消したときは、保存した内容も消えることがあります。大事なキャラクターは下のバックアップを取っておくと安心です。</p>
+  </div></section>
+
+  <section class="card"><h2>キャラクター</h2><div class="body">
+    <ul class="chars">${items}</ul>
+    <button class="btn wide" data-act="newchar">新しいキャラクターを作る</button>
+  </div></section>
+
+  <section class="card"><h2>バックアップ</h2><div class="body">
+    <div class="kv">
+      <button class="btn" data-act="export">ファイルに書き出す</button>
+      <button class="btn" data-act="importfile">ファイルから読み込む</button>
+      <button class="btn" data-act="copy">内容をコピーする</button>
+      <button class="btn" data-act="pasteimport">貼り付けて読み込む</button>
+    </div>
+    <label class="field" style="margin-top:12px"><span>貼り付け用の入力欄（コピーした内容をここに貼ります）</span><textarea id="paste" placeholder="ここに貼り付けてから「貼り付けて読み込む」を押します"></textarea></label>
+    <p class="note">読み込んだキャラクターは、今ある一覧に追加されます。上書きはされません。</p>
+  </div></section>
+
+  <section class="card"><h2>このアプリについて</h2><div class="body">
+    <p style="margin:0">同人誌TRPG「ローグライクハーフ」（作：杉本＝ヨハネ、監修：紫隠ねこ）の冒険記録紙を、スマホで書き込みやすく並べた個人用の非公式ツールです。</p>
+    <p class="note">ルールの文章や表は入っていません。遊ぶにはルールブックが必要です。</p>
+  </div></section>`;
+}
+
+/* ---------- 描画 ---------- */
+let tab='sheet';
+try{const t=localStorage.getItem(TABKEY);if(TABS.some(x=>x[0]===t))tab=t}catch(e){}
+let lastRoll=null,rollTimer=null;
+
+function renderNav(){
+  $('#tabs').innerHTML=TABS.map(([id,name,svg])=>`<button data-act="tab" data-tab="${id}"${id===tab?' aria-current="page"':''}>${svg}<span>${name}</span></button>`).join('');
+}
+function renderMain(keepScroll){
+  const y=window.scrollY;
+  $('#main').innerHTML=tab==='sheet'?viewSheet():tab==='dice'?viewDice():tab==='d66'?view66():viewData();
+  const sel=$('#charSel');if(sel)sel.value=state.active;
+  syncUI();renderStage();renderLog();
+  window.scrollTo(0,keepScroll?y:0);
+}
+function renderAll(){renderNav();renderMain()}
+function setTab(t){
+  tab=t;try{localStorage.setItem(TABKEY,t)}catch(e){}
+  renderNav();renderMain();
+}
+
+function renderStage(){
+  $$('[data-stage]').forEach(el=>{
+    const r=lastRoll;
+    if(!r){el.className='stage';el.innerHTML='<div class="empty">ダイスのボタンを押すと、ここに結果が出ます。</div>';return}
+    el.className='stage '+(r.tone||'');
+    let h=`<div class="dice">${r.dice.map(dieHTML).join('')}</div><div class="big">${esc(r.big)}</div><div class="label">${esc(r.label)}</div>`;
+    if(r.verdict)h+=`<div class="verdict">${esc(r.verdict)}</div>`;
+    if(r.sub)h+=`<div class="sub">${esc(r.sub)}</div>`;
+    if(r.type==='check'&&r.useSub){
+      const c=cur();
+      h+=r.consumed?`<div class="sub">${esc(subName(c))}を1点消費しました（現在 ${c.stats.sub.cur}）</div>`
+        :`<button class="btn" data-act="consume">${esc(subName(c))}を1点消費する（${c.stats.sub.cur}→${c.stats.sub.cur-1}）</button>`;
+    }
+    if(r.type==='d66'){
+      const on=cur().d66[r.idx];
+      h+=`<button class="btn" data-act="chk66">${on?`出目${r.big}のチェックを外す`:`出目${r.big}にチェックを付ける`}</button>`;
+    }
+    el.innerHTML=h;
+  });
+}
+function renderLog(){
+  const ul=$('#log');if(!ul)return;
+  const c=cur();
+  ul.innerHTML=c.log.length?c.log.map(e=>{const d=new Date(e.t);return `<li class="${e.tone||''}"><time>${pad2(d.getHours())}:${pad2(d.getMinutes())}</time><span>${esc(e.s)}</span></li>`}).join(''):'<li style="border:0"><span class="empty-note">まだ記録がありません。</span></li>';
+  const b=$('#clearlog');if(b)b.hidden=!c.log.length;
+}
+
+function derived(){
+  const c=cur();if(!c)return;
+  /* 上の帯 */
+  const chips=$('#chips');
+  if(chips){
+    const names={skill:'技量',life:'生命',sub:c.subType?c.subType.replace('点',''):'副能力',follower:'従者'};
+    chips.innerHTML=STATS.map(([k])=>{
+      const s=c.stats[k],low=(k==='life'&&s.cur<=0)||(k==='sub'&&c.subType&&s.cur<=0);
+      return `<button class="chip${low?' low':''}" style="font:inherit;color:inherit" data-act="tab" data-tab="sheet" aria-label="${names[k]} ${s.cur} / ${s.max}"><span>${esc(names[k])}</span><b>${s.cur}</b><i>/${s.max}</i></button>`;
+    }).join('');
+  }
+  $$('[data-sublabel]').forEach(el=>{el.textContent=subName(c)});
+  /* 切り替えの名前 */
+  const sel=$('#charSel');
+  if(sel){const o=[...sel.options].find(x=>x.value===c.id);if(o)o.textContent=c.name||'（名前なし）'}
+  /* 装備の数 */
+  const ic=$('#itemcount');
+  if(ic){const n=c.items.length,mx=c.stats.life.max;ic.textContent=`${n} / ${mx}`;ic.classList.toggle('over',n>mx)}
+  /* 修正の合計 */
+  for(let j=0;j<7;j++){
+    const e=$('#msum-'+j);if(e){const t=modTotal(c,j);e.textContent=t===0?'0':fmt(t);e.classList.toggle('neg',t<0)}
+  }
+  /* 従者の合計 */
+  const ft=$('#ftotal');
+  if(ft){
+    const t=[...c.followers.fight,...c.followers.nofight].reduce((s,f)=>s+(Number(f.count)||0),0);
+    ft.textContent=`${t}（従者点 ${c.stats.follower.cur}/${c.stats.follower.max}）`;
+    ft.classList.toggle('over',t>c.stats.follower.max);
+  }
+  /* 判定 */
+  const bs=$('#bs-skill');
+  if(bs){
+    bs.textContent=c.stats.skill.cur;
+    const subOK=!!c.subType&&c.stats.sub.cur>0;
+    $('#bs-sub').textContent=c.subType?c.stats.sub.cur:'未選択';
+    const so=$('#subopt');so.disabled=!subOK;
+    if(!subOK&&c.roll.base==='sub')c.roll.base='skill';
+    const kind=KINDS.find(k=>k.id===c.roll.kind)||KINDS[0];
+    const base=c.roll.base==='sub'?c.stats.sub.cur:c.stats.skill.cur;
+    const bn=c.roll.base==='sub'?subName(c):'技量点';
+    const mod=kind.mod!=null?modTotal(c,kind.mod):0;
+    $('#cpreview').textContent=`${bn}${base} ＋ 修正${fmt(mod)} ＋ 追加${fmt(c.roll.adj)} ＋ 1d6 ≧ ${c.roll.target}`;
+    $$('[data-pick-path]').forEach(b=>b.classList.toggle('on',getPath(c,b.dataset.pickPath)===b.dataset.pickVal));
+  }
+  const sv=$('#savedAt');if(sv&&lastSaved)sv.textContent=`${pad2(lastSaved.getHours())}:${pad2(lastSaved.getMinutes())}:${pad2(lastSaved.getSeconds())}`;
+}
+
+/* ---------- ダイス ---------- */
+function addLog(s,tone){
+  const c=cur();
+  c.log.unshift({t:Date.now(),s,tone:tone||''});
+  if(c.log.length>60)c.log.length=60;
+  save();renderLog();
+}
+function present(r){
+  lastRoll=r;
+  clearInterval(rollTimer);
+  const finish=()=>{
+    renderStage();
+    if(tab==='d66')renderMain(true);
+  };
+  const stages=$$('[data-stage]');
+  if(REDUCED||!stages.length){finish();return}
+  let n=0;
+  stages.forEach(s=>s.classList.add('rolling'));
+  rollTimer=setInterval(()=>{
+    n++;
+    stages.forEach(s=>{const d=$('.dice',s);if(d)d.innerHTML=r.dice.map(()=>dieHTML(1+Math.floor(Math.random()*6))).join('')});
+    if(n>=7){clearInterval(rollTimer);finish()}
+  },60);
+  stages.forEach(s=>{
+    s.className='stage rolling';
+    s.innerHTML=`<div class="dice">${r.dice.map(()=>dieHTML(1+Math.floor(Math.random()*6))).join('')}</div>`;
+  });
+}
+function rollQuick(q){
+  let r;
+  if(q==='1d6'){const a=d6();r={type:'q',dice:[a],big:String(a),label:'1d6',sub:''};addLog(`1d6：${a}`)}
+  else if(q==='2d6'){const a=d6(),b=d6();r={type:'q',dice:[a,b],big:String(a+b),label:'2d6',sub:`${a} ＋ ${b}`};addLog(`2d6：${a}＋${b}＝${a+b}`)}
+  else if(q==='1d3'){const a=d6(),v=Math.ceil(a/2);r={type:'q',dice:[a],big:String(v),label:'1d3',sub:`d6の出目${a}を半分にして切り上げ`};addLog(`1d3：${v}（d6の出目${a}）`)}
+  else{
+    const a=d6(),b=d6(),idx=(a-1)*6+(b-1),c=cur();
+    r={type:'d66',dice:[a,b],big:`${a}${b}`,label:'d66',sub:`十の位${a}、一の位${b}`,idx};
+    const was=c.d66[idx];
+    if(was)r.sub+='（チェック済みの出目）';
+    if(c.auto66&&!was){c.d66[idx]=true;save()}
+    addLog(`d66：${a}${b}`+(was?'（チェック済み）':''));
+  }
+  present(r);
+}
+function rollCheck(){
+  const c=cur(),R=c.roll;
+  const kind=KINDS.find(k=>k.id===R.kind)||KINDS[0];
+  const useSub=R.base==='sub';
+  if(useSub&&(!c.subType||c.stats.sub.cur<=0)){toast(`${subName(c)}が0点以下のため使えません`);return}
+  const base=useSub?c.stats.sub.cur:c.stats.skill.cur;
+  const bn=useSub?subName(c):'技量点';
+  const mod=kind.mod!=null?modTotal(c,kind.mod):0;
+  const die=d6();
+  const power=die+base+mod+R.adj;
+  let ok=power>=R.target,tone,verdict;
+  if(die===6){ok=true;tone='crit';verdict='クリティカル（必ず成功）'}
+  else if(die===1){ok=false;tone='fum';verdict='ファンブル（必ず失敗）'}
+  else{tone=ok?'ok':'ng';verdict=ok?'成功':'失敗'}
+  const r={type:'check',useSub,consumed:false,dice:[die],big:String(power),tone,verdict,
+    label:`${kind.name}ロール（${bn}）`,
+    sub:`出目${die} ＋ ${bn}${base} ＋ 修正${fmt(mod)} ＋ 追加${fmt(R.adj)}　目標値${R.target}`};
+  addLog(`${kind.name}ロール：出目${die}＋${bn}${base}＋修正${fmt(mod)}＋追加${fmt(R.adj)}＝${power}（目標${R.target}）${verdict}`,ok?'ok':'ng');
+  present(r);
+}
+
+/* ---------- 操作 ---------- */
+let toastTimer=null;
+function toast(m){
+  const t=$('#toast');t.textContent=m;t.classList.add('show');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
+}
+const FACT={
+  'items':()=> '', 'spells':()=> '',
+  'followers.fight':()=>({name:'',skill:0,other:'',count:1}),
+  'followers.nofight':()=>({name:'',skill:0,other:'',count:1})
+};
+function exportData(){return JSON.stringify({app:'rh-sheet',v:1,exported:new Date().toISOString(),chars:state.chars})}
+function importText(text){
+  let data;
+  try{data=JSON.parse(text)}catch(e){toast('読み込めませんでした。内容が正しくありません');return}
+  let list=Array.isArray(data)?data:Array.isArray(data&&data.chars)?data.chars:(data&&data.stats?[data]:null);
+  if(!list||!list.length||!list.every(x=>x&&typeof x==='object'&&x.stats)){toast('読み込めませんでした。キャラクターのデータではありません');return}
+  if(!confirm(`${list.length}人のキャラクターを一覧に追加します。よろしいですか？`))return;
+  list.forEach(x=>{x=normalizeChar(x);x.id=uid();state.chars.push(x)});
+  save();renderMain(true);toast(`${list.length}人を追加しました`);
+}
+function copyText(text){
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>toast('コピーしました'),()=>fallbackCopy(text));
+  }else fallbackCopy(text);
+}
+function fallbackCopy(text){
+  const ta=document.createElement('textarea');ta.value=text;ta.style.cssText='position:fixed;opacity:0;top:0';
+  document.body.appendChild(ta);ta.focus();ta.select();
+  let ok=false;try{ok=document.execCommand('copy')}catch(e){}
+  ta.remove();toast(ok?'コピーしました':'コピーできませんでした。ファイルに書き出してください');
+}
+
+document.addEventListener('click',e=>{
+  const pick=e.target.closest('[data-pick-path]');
+  if(pick&&!pick.disabled){commit(pick.dataset.pickPath,pick.dataset.pickVal);return}
+  const b=e.target.closest('[data-act]');if(!b)return;
+  const c=cur(),a=b.dataset.act;
+  switch(a){
+    case 'tab':setTab(b.dataset.tab);break;
+    case 'step':{
+      const p=b.dataset.path,v=Number(getPath(c,p))||0;
+      commit(p,v+Number(b.dataset.d));break}
+    case 'add':{
+      const l=b.dataset.list,arr=getPath(c,l);
+      arr.push(FACT[l]());save();renderMain(true);
+      const n=arr.length-1;
+      const el=$(`[data-bind="${l}.${n}${l.startsWith('followers')?'.name':''}"]`);if(el)el.focus();
+      break}
+    case 'del':{
+      getPath(c,b.dataset.list).splice(Number(b.dataset.i),1);save();renderMain(true);break}
+    case 'healall':
+      ['skill','life','sub'].forEach(k=>{c.stats[k].cur=c.stats[k].max});
+      save();syncUI();toast('最大値まで回復しました');break;
+    case 'eat':
+      if(c.food<=0){toast('食料がありません');break}
+      c.food-=1;c.stats.life.cur=Math.min(c.stats.life.max,c.stats.life.cur+2);
+      save();syncUI();toast('食料を食べました');break;
+    case 'syncfol':{
+      const t=[...c.followers.fight,...c.followers.nofight].reduce((s,f)=>s+(Number(f.count)||0),0);
+      commit('stats.follower.cur',t);break}
+    case 'q':rollQuick(b.dataset.q);break;
+    case 'rollcheck':rollCheck();break;
+    case 'consume':
+      if(lastRoll&&lastRoll.type==='check'&&!lastRoll.consumed){
+        commit('stats.sub.cur',c.stats.sub.cur-1);lastRoll.consumed=true;renderStage();
+      }break;
+    case 'clearlog':
+      if(confirm('ダイスの記録を消しますか？')){c.log=[];save();renderLog()}break;
+    case 'chk66':
+      if(lastRoll&&lastRoll.type==='d66'){c.d66[lastRoll.idx]=!c.d66[lastRoll.idx];save();renderStage();if(tab==='d66')renderMain(true)}break;
+    case 'cell66':{
+      const i=Number(b.dataset.idx);c.d66[i]=!c.d66[i];save();
+      b.setAttribute('aria-pressed',c.d66[i]);renderStage();break}
+    case 'reset66':
+      if(confirm('d66表のチェックをすべて外しますか？')){c.d66=Array(36).fill(false);save();renderMain(true)}break;
+    case 'selchar':state.active=b.dataset.id;save();renderMain();toast('切り替えました');break;
+    case 'newchar':{
+      const n=newChar();state.chars.push(n);state.active=n.id;save();lastRoll=null;
+      tab='sheet';try{localStorage.setItem(TABKEY,tab)}catch(e){}
+      renderAll();toast('新しいキャラクターを作りました');break}
+    case 'dupchar':{
+      const src=state.chars.find(x=>x.id===b.dataset.id);
+      const cp=normalizeChar(JSON.parse(JSON.stringify(src)));cp.id=uid();cp.name=(src.name||'名前なし')+'のコピー';cp.log=[];
+      state.chars.push(cp);save();renderMain(true);toast('複製しました');break}
+    case 'delchar':{
+      const src=state.chars.find(x=>x.id===b.dataset.id);
+      if(state.chars.length<=1){toast('最後の1人は削除できません');break}
+      if(!confirm(`「${src.name||'名前なし'}」を削除します。元に戻せません。よろしいですか？`))break;
+      state.chars=state.chars.filter(x=>x.id!==src.id);
+      if(state.active===src.id)state.active=state.chars[0].id;
+      save();lastRoll=null;renderMain(true);break}
+    case 'export':{
+      const blob=new Blob([exportData()],{type:'application/json'});
+      const url=URL.createObjectURL(blob);const d=new Date();
+      const ln=document.createElement('a');ln.href=url;ln.download=`bouken-kirokushi-${d.getFullYear()}${pad2(d.getMonth()+1)}${pad2(d.getDate())}.json`;
+      document.body.appendChild(ln);ln.click();ln.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
+      toast('書き出しました');break}
+    case 'importfile':$('#file').click();break;
+    case 'copy':copyText(exportData());break;
+    case 'pasteimport':{
+      const t=$('#paste').value.trim();
+      if(!t){toast('先に入力欄へ貼り付けてください');break}
+      importText(t);break}
+  }
+});
+document.addEventListener('input',e=>{
+  const el=e.target;
+  if(!el.dataset||!el.dataset.bind||el.type==='checkbox'||el.tagName==='SELECT')return;
+  if(isStat(el.dataset.bind))return;
+  handleBind(el,false);
+});
+document.addEventListener('change',e=>{
+  const el=e.target;
+  if(el.id==='charSel'){state.active=el.value;save();lastRoll=null;renderMain();return}
+  if(el.id==='file'){
+    const f=el.files&&el.files[0];if(!f)return;
+    const rd=new FileReader();rd.onload=()=>{importText(String(rd.result))};rd.readAsText(f);el.value='';return;
+  }
+  if(!el.dataset||!el.dataset.bind)return;
+  handleBind(el,true);
+});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&saveTimer)flush()});
+window.addEventListener('pagehide',()=>{if(saveTimer)flush()});
+
+/* ---------- 起動 ---------- */
+load();
+renderAll();
+flush();
+try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+if('serviceWorker' in navigator&&/^https?:/.test(location.protocol)){
+  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
+}
+})();
+</script>
+</body>
+</html>
