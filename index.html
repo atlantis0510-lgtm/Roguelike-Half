@@ -13,6 +13,7 @@
 <title>冒険記録紙</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="adventure.css">
 <link rel="apple-touch-icon" href="icon-180.png">
 <style>
 :root{
@@ -195,7 +196,7 @@ table.mods{width:100%;border-collapse:collapse;table-layout:fixed}
 .note+.note{margin-top:6px}
 
 /* ナビ・トースト */
-nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(4,1fr);background:var(--card);border-top:1.5px solid var(--edge);padding-bottom:var(--safe-b)}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(5,1fr);background:var(--card);border-top:1.5px solid var(--edge);padding-bottom:var(--safe-b)}
 nav.tabs button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:58px;border:0;background:transparent;color:var(--muted);font-size:12px;font-weight:600}
 nav.tabs button svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 nav.tabs button[aria-current=page]{color:var(--ink)}
@@ -216,6 +217,11 @@ nav.tabs button[aria-current=page]::before{content:"";position:absolute;top:-1.5
 <nav class="tabs" id="tabs" aria-label="画面切り替え"></nav>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <input type="file" id="file" accept=".json,application/json" hidden>
+<input type="file" id="packfile" accept=".json,application/json" hidden>
+<script src="rh-util.js"></script>
+<script src="rh-engine.js"></script>
+<script src="rh-battle.js"></script>
+<script src="rh-wizard.js"></script>
 
 <script>
 (()=>{
@@ -237,6 +243,7 @@ const BOUNDS={'roll.target':[1,20],'roll.adj':[-9,9],'gold':[0,9999],'food':[0,9
 const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const TABS=[
   ['sheet','シート','<svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 12h7M9 16h7"/></svg>'],
+  ['adv','冒険','<svg viewBox="0 0 24 24"><path d="M5 20l9-9M14 11l-2-4 5-4 4 4-4 5z"/><path d="M5 20l-1-3 3 1z"/></svg>'],
   ['dice','ダイス','<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="15" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/><circle cx="9" cy="15" r="1" fill="currentColor"/></svg>'],
   ['d66','d66表','<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16"/><path d="M4 9.3h16M4 14.7h16M9.3 4v16M14.7 4v16"/></svg>'],
   ['data','保存','<svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></svg>']
@@ -267,7 +274,8 @@ function newChar(name){
     mods:[0,1,2,3,4,5].map(()=>({label:'',v:[0,0,0,0,0,0,0]})),
     followers:{fight:[],nofight:[]},
     d66:Array(36).fill(false),auto66:false,notes:'',log:[],
-    roll:{kind:'atk',base:'skill',target:4,adj:0}
+    roll:{kind:'atk',base:'skill',target:4,adj:0},
+    adv:null,clears:0,adventures:0,expPool:0,expSpent:{skill:0,life:0,sub:0,follower:0},dead:false
   };
 }
 function fillDefaults(t,d){
@@ -490,6 +498,9 @@ function viewDice(){
   </div></section>`;
 }
 
+function viewAdv(){
+  try{return window.RH&&RH.view?RH.view():''}catch(err){console.error(err);return '<section class="card"><h2>エラー</h2><div class="body"><p>冒険画面でエラーが出ました：'+esc(err.message)+'</p></div></section>'}
+}
 function view66(){
   const c=cur();
   let cells='';
@@ -514,6 +525,7 @@ function view66(){
   </div></section>`;
 }
 
+function packStatus(){const p=window.RH&&RH.getPack&&RH.getPack();return p?`読み込み済み：『${esc(p.scenario.title||'')}』`:'まだ読み込まれていません。'}
 function viewData(){
   const items=state.chars.map(c=>`<li class="${c.id===state.active?'on':''}"><button class="pick" data-act="selchar" data-id="${c.id}"><b>${esc(c.name||'（名前なし）')}</b><small>技量${c.stats.skill.cur} 生命${c.stats.life.cur}/${c.stats.life.max} レベル${c.level}</small></button><button class="btn" data-act="dupchar" data-id="${c.id}">複製</button><button class="btn danger" data-act="delchar" data-id="${c.id}">削除</button></li>`).join('');
   return `
@@ -527,6 +539,13 @@ function viewData(){
   <section class="card"><h2>キャラクター</h2><div class="body">
     <ul class="chars">${items}</ul>
     <button class="btn wide" data-act="newchar">新しいキャラクターを作る</button>
+  </div></section>
+
+  <section class="card"><h2>シナリオデータ</h2><div class="body">
+    <p style="margin:0">冒険モードで使うシナリオのデータです。この端末のブラウザの中だけに保存されます。</p>
+    <p class="note" id="packstat">${packStatus()}</p>
+    <div class="kv"><button class="btn" data-act="packload">データを読み込む</button><button class="btn danger" data-act="packdel">データを削除する</button></div>
+    <p class="note">読み込むファイルは、お渡しした rlh-tasogare-pack.json です。端末ごと・ブラウザごとに1回ずつ読み込みます。このファイルは個人利用専用です。公開された場所には置かないでください。</p>
   </div></section>
 
   <section class="card"><h2>バックアップ</h2><div class="body">
@@ -556,10 +575,11 @@ function renderNav(){
 }
 function renderMain(keepScroll){
   const y=window.scrollY;
-  $('#main').innerHTML=tab==='sheet'?viewSheet():tab==='dice'?viewDice():tab==='d66'?view66():viewData();
+  $('#main').innerHTML=tab==='sheet'?viewSheet():tab==='adv'?viewAdv():tab==='dice'?viewDice():tab==='d66'?view66():viewData();
   const sel=$('#charSel');if(sel)sel.value=state.active;
   syncUI();renderStage();renderLog();
   window.scrollTo(0,keepScroll?y:0);
+  if(window.RH&&RH.after)RH.after();
 }
 function renderAll(){renderNav();renderMain()}
 function setTab(t){
@@ -739,6 +759,10 @@ function fallbackCopy(text){
 }
 
 document.addEventListener('click',e=>{
+  const go=e.target.closest('[data-tab-go]');
+  if(go){setTab(go.dataset.tabGo);return}
+  const adv=e.target.closest('[data-adv]');
+  if(adv){if(adv.disabled)return;const n=adv.dataset.adv;if(n.indexOf('w-')===0)RH.wizAct(adv);else RH.act(adv);return}
   const pick=e.target.closest('[data-pick-path]');
   if(pick&&!pick.disabled){commit(pick.dataset.pickPath,pick.dataset.pickVal);return}
   const b=e.target.closest('[data-act]');if(!b)return;
@@ -804,6 +828,8 @@ document.addEventListener('click',e=>{
       document.body.appendChild(ln);ln.click();ln.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
       toast('書き出しました');break}
     case 'importfile':$('#file').click();break;
+    case 'packload':$('#packfile').click();break;
+    case 'packdel':if(confirm('読み込んだシナリオデータをこの端末から削除します。冒険の途中のデータは使えなくなります。よろしいですか？')){RH.clearPack();renderMain(true);toast('削除しました')}break;
     case 'copy':copyText(exportData());break;
     case 'pasteimport':{
       const t=$('#paste').value.trim();
@@ -813,12 +839,18 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('input',e=>{
   const el=e.target;
+  if(el.dataset&&el.dataset.advc==='w-name'){RH.wizChange(el);return}
   if(!el.dataset||!el.dataset.bind||el.type==='checkbox'||el.tagName==='SELECT')return;
   if(isStat(el.dataset.bind))return;
   handleBind(el,false);
 });
 document.addEventListener('change',e=>{
   const el=e.target;
+  if(el.id==='packfile'){
+    const f=el.files&&el.files[0];if(!f)return;
+    const rd=new FileReader();rd.onload=()=>{const r=RH.setPack(String(rd.result));if(r.ok){toast('シナリオデータを読み込みました');renderMain(true)}else toast(r.error)};rd.readAsText(f);el.value='';return;
+  }
+  if(el.dataset&&el.dataset.advc){if(el.dataset.advc.indexOf('w-')===0)RH.wizChange(el);else RH.change(el);return}
   if(el.id==='charSel'){state.active=el.value;save();lastRoll=null;renderMain();return}
   if(el.id==='file'){
     const f=el.files&&el.files[0];if(!f)return;
@@ -831,7 +863,12 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 window.addEventListener('pagehide',()=>{if(saveTimer)flush()});
 
 /* ---------- 起動 ---------- */
+window.RHH={cur,save,esc,toast,addLog,dieHTML,modTotal,subName,getPath,commit,syncUI,
+  rerender:()=>renderMain(true),
+  makeChar:n=>newChar(n),
+  addChar:c=>{normalizeChar(c);state.chars.push(c);state.active=c.id;save()}};
 load();
+try{RH.loadPack()}catch(e){}
 renderAll();
 flush();
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}

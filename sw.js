@@ -1,10 +1,15 @@
 // オフライン用の保存係。アプリ本体をこの端末に覚えさせます。
 // index.html などを書き換えたときは、下の VERSION の数字を1つ上げてください。
-const VERSION = 'rh-sheet-v1';
+const VERSION = 'rh-sheet-v3';
 const FILES = [
   './',
   './index.html',
   './manifest.webmanifest',
+  './adventure.css',
+  './rh-util.js',
+  './rh-engine.js',
+  './rh-battle.js',
+  './rh-wizard.js',
   './icon-180.png',
   './icon-192.png',
   './icon-512.png',

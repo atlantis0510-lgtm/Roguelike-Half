@@ -1,0 +1,57 @@
+/* 冒険モードの見た目（シナリオの内容は入っていません） */
+.strip{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;font-size:13px}
+.strip>span{padding:3px 8px;background:var(--card);border:1.5px solid var(--edge);border-radius:4px}
+.strip b{font-family:var(--serif);font-size:15px}
+.strip .flag{background:var(--red);color:#fff;border-color:var(--red)}
+.tilehead{margin:0 0 8px;font-family:var(--serif);font-weight:700;font-size:14px;color:var(--muted)}
+.stitle{margin:0 0 8px;font-family:var(--serif);font-size:18px}
+.stitle2{margin:10px 0 6px;font-weight:700;font-size:15px}
+.say p{margin:0 0 8px}
+.choices{display:grid;gap:8px;margin-top:12px}
+.res{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px;margin:8px 0;background:var(--floor);color:var(--floor-ink);border-radius:4px}
+.resn{font-family:var(--serif);font-size:44px;font-weight:700;line-height:1}
+.resm{font-size:12px;opacity:.8}
+.reactchip{padding:4px 16px;border:1.5px solid currentColor;border-radius:4px;font-weight:700;font-size:20px}
+.dicerow{display:inline-flex;gap:6px}
+.dicerow .die{width:34px;height:34px;padding:4px;border-radius:7px;box-shadow:0 2px 0 #000}
+.units{display:grid;gap:4px;margin:8px 0}
+.urow{display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--paper);border:1px solid var(--line);border-radius:4px}
+.uname{flex:1;min-width:0;font-weight:600}
+.ures{font-size:13px}.ures.ok{color:var(--green)}.ures.ng{color:var(--red)}
+.uwait{color:var(--muted);font-size:13px}
+.pickrow{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
+.chipbtn{min-height:40px;padding:4px 12px;background:var(--paper);border:1.5px solid var(--line);border-radius:20px;font-weight:600}
+.chipbtn.on{background:var(--ink);color:var(--card);border-color:var(--edge)}
+.chipbtn.sm{min-height:32px;padding:2px 10px;font-size:13px}
+.chipbtn[disabled]{opacity:.4}
+.traitsel{display:inline-flex;gap:4px;margin-right:6px}
+.rulebox{margin:10px 0;padding:8px 12px;background:var(--paper);border:1.5px dashed var(--line);border-radius:4px;font-size:14px}
+.rulebox ul{margin:4px 0 0;padding-left:20px}
+.warnbox{border-color:var(--red)}
+.kv2{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:10px 0}
+.kv2 span{color:var(--muted);font-size:13px}
+.advlog,.manual{margin:0 0 14px;font-size:14px}
+.advlog summary,.manual summary{cursor:pointer;padding:8px 4px;color:var(--muted)}
+.advlog ul{margin:0;padding-left:18px}.advlog li.ok{color:var(--green)}.advlog li.ng{color:var(--red)}
+.mrow{display:flex;align-items:center;gap:6px;margin:6px 0}.mrow>span{flex:1}
+.shoprow{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
+.shopname{flex:1;min-width:0}.shopname small{display:block;color:var(--muted);font-size:12px}
+.expleft{margin:8px 0;padding:6px 10px;background:var(--head);border-radius:4px}
+.exprow{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
+.expname{flex:1}.expname small{display:block;color:var(--muted);font-size:12px}
+.expctl{display:flex;align-items:center;gap:6px}
+.expval{min-width:34px;text-align:center;font-family:var(--serif);font-size:18px;font-weight:700}
+.expval small{display:block;font-size:10px;font-weight:400}
+.wizhead{display:flex;justify-content:space-between;font-weight:700;margin-bottom:8px}
+.wiznav{display:flex;gap:8px;margin-top:14px}.wiznav .btn{flex:1}
+.tilecard{padding:10px;margin-bottom:10px;border:1.5px solid var(--line);border-radius:4px;background:var(--paper)}
+.tilecard.on{border-color:var(--edge)}
+.tilerow{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.tilev{font-family:var(--serif);font-size:18px;font-weight:700}
+.foes{display:grid;gap:6px;margin:8px 0}
+.foe{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;padding:6px 10px;border:1.5px solid var(--edge);border-radius:4px;background:var(--paper)}
+.foe.gone{opacity:.45;text-decoration:line-through}
+.foe span{font-size:13px;color:var(--muted)}.foehp{margin-left:auto;font-weight:700;color:var(--ink)!important}
+.partybar{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:13px;margin:6px 0}
+.foestat{margin:8px 0;padding:8px 12px 8px 26px;background:var(--head);border-left:3px solid var(--amber);border-radius:6px;font-size:.9rem}
+.foestat li{margin:2px 0}
